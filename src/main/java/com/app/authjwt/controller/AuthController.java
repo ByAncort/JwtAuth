@@ -19,18 +19,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     @Autowired
     private UserRepository userRepository;
-    private final AuthService authService;
+    @Autowired
+    private  AuthService authService;
 
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
 
-    @PostMapping(value = "login")
+
+    @PostMapping(value = "signin")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request){
-
         return ResponseEntity.ok(authService.login(request));
     }
-    @PostMapping(value = "register")
+
+    @PostMapping(value = "signup")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request){
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body("Error: Email is already in use!");

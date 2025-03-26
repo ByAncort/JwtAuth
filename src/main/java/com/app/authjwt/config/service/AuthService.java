@@ -11,11 +11,19 @@ import com.app.authjwt.payload.response.AuthResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
+import java.util.Date;
 import java.util.Optional;
 
 
@@ -31,11 +39,37 @@ public class AuthService {
     private  UserRepository userRepository;
     @Autowired
     private  JwtUtils jwtService;
-
-
+    @Autowired
+    private  PasswordEncoder passwordEncoder;
+    @Autowired
+    private AuthenticationManager authenticationManager;
+    @Value("${auth.app.jwtExpirationMs}")
+    private int jwtExpirationMs;
 
     public AuthResponse login(LoginRequest request) {
-        return null;
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+        } catch (BadCredentialsException e) {
+            throw new BadCredentialsException("Invalid username or password");
+        }
+        UserDetails user=userRepository.findByUsername(request.getUsername()).orElseThrow(()
+                 -> new UsernameNotFoundException("User not found with username: " + request.getUsername()));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Invalid username or password");
+        }
+        Date issuedAt = new Date();
+        Date expiration = new Date(System.currentTimeMillis() + jwtExpirationMs);
+
+        String token = jwtService.getToken(user);
+        AuthResponse tokenResponse = new AuthResponse(token, issuedAt, expiration);
+
+//        AuthResponse response = new AuthResponse();
+//        response.setToken(tokenResponse.getToken());
+//        response.setIssuedAt(tokenResponse.getIssuedAt());
+//        response.setExpiration(tokenResponse.getExpiration());
+        return tokenResponse;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -47,15 +81,17 @@ public class AuthService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRoles(Collections.singleton(userRole));
 
 
         userRepository.save(user);
+        Date issuedAt = new Date();
+        Date expiration = new Date(System.currentTimeMillis() + jwtExpirationMs);
+        String token = jwtService.getToken(user);
+        AuthResponse tokenResponse = new AuthResponse(token, issuedAt, expiration);
 
-        AuthResponse response = new AuthResponse();
-        response.setToken(jwtService.getToken(user));
-        return response;
+        return tokenResponse;
 
 
 
