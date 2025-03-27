@@ -6,6 +6,7 @@ import lombok.*;
 import java.util.HashSet;
 import java.util.Set;
 
+
 @Entity
 @Getter
 @Setter
@@ -20,7 +21,7 @@ public class Role {
     @Column(length = 50, unique = true, nullable = false)
     private String name;
 
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "role_permissions",
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "permission_id"))

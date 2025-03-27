@@ -32,11 +32,11 @@ public class JwtUtils {
     private String jwtRefreshMs;
 
     public String getUsernameFromToken(String token) {
-        return getClaims(token,Claims::getSubject);
+        return getClaims(token, Claims::getSubject);
     }
 
     public String getToken(UserDetails user) {
-        return generateTokenFromUsername(new HashMap<>(),user);
+        return generateTokenFromUsername(new HashMap<>(), user);
     }
 
     public Key getSigningKey() {
@@ -44,7 +44,7 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    private String generateTokenFromUsername(HashMap<String,Object> extraClaims, UserDetails user) {
+    private String generateTokenFromUsername(HashMap<String, Object> extraClaims, UserDetails user) {
         Date issuedAt = new Date();
         Date expiration = new Date(System.currentTimeMillis() + jwtExpirationMs);
 
@@ -59,13 +59,6 @@ public class JwtUtils {
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
         return token;
-    }
-    public static Claims decodeToken(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
     }
 
     private Claims getAllClaims(String token)

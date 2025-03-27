@@ -18,9 +18,8 @@ public class DemoController {
 
     @GetMapping("/info/profile")
     @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
-    public String infoProfile() {
-        userService.getInfoProfile();
-        return "Info profile";
+    public Object infoProfile() {
+        return userService.getLoggedInUser();
     }
 
     @GetMapping("/all")
