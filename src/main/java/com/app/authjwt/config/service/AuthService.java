@@ -63,13 +63,19 @@ public class AuthService {
         Date expiration = new Date(System.currentTimeMillis() + jwtExpirationMs);
 
         String token = jwtService.getToken(user);
-        AuthResponse tokenResponse = new AuthResponse(token, issuedAt, expiration);
+
+        return AuthResponse.builder()
+                .issuedAt(issuedAt)
+                .expiration(expiration)
+                .token(token)
+                .build();
+//        AuthResponse tokenResponse = new AuthResponse( issuedAt, expiration,token);
 
 //        AuthResponse response = new AuthResponse();
 //        response.setToken(tokenResponse.getToken());
 //        response.setIssuedAt(tokenResponse.getIssuedAt());
 //        response.setExpiration(tokenResponse.getExpiration());
-        return tokenResponse;
+//        return tokenResponse;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -78,20 +84,26 @@ public class AuthService {
         Role userRole = roleRepository.findByName("ROLE_USER")
                 .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
 
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRoles(Collections.singleton(userRole));
+        User user= User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .roles(Collections.singleton(userRole))
+                .build();
+
+
 
 
         userRepository.save(user);
         Date issuedAt = new Date();
         Date expiration = new Date(System.currentTimeMillis() + jwtExpirationMs);
         String token = jwtService.getToken(user);
-        AuthResponse tokenResponse = new AuthResponse(token, issuedAt, expiration);
 
-        return tokenResponse;
+        return AuthResponse.builder()
+                .issuedAt(issuedAt)
+                .expiration(expiration)
+                .token(token)
+                .build();
 
 
 
