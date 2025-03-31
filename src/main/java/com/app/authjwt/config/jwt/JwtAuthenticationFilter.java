@@ -54,7 +54,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private void authenticateUser(String token, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    private void authenticateUser(String token, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
         try {
             String username = jwtUtils.getUsernameFromToken(token);
 

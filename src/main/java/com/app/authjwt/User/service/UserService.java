@@ -59,7 +59,7 @@ public class UserService {
                 String username = ((UserDetails) principal).getUsername();
 
                 return userRepository.findByUsername(username)
-                        .map(this::convertToDto) // Asume que tienes un método convertToDto
+                        .map(this::convertToDto)
                         .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
             } else if (principal instanceof String) {

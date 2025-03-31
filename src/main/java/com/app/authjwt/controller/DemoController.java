@@ -17,7 +17,7 @@ public class DemoController {
     private UserService userService;
 
     @GetMapping("/info/profile")
-    @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN_PERMISSIONS')")
     public Object infoProfile() {
         return userService.getLoggedInUser();
     }
@@ -28,13 +28,13 @@ public class DemoController {
     }
 
     @GetMapping("/user")
-    @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
+
     public String userAccess() {
         return "User Content.";
     }
 
     @GetMapping("/mod")
-    @PreAuthorize("hasRole('MODERATOR')")
+    @PreAuthorize("hasRole('MODERATOR') or hasAuthority('ADMIN_PERMISSIONS')")
     public String moderatorAccess() {
         return "Moderator Board.";
     }
