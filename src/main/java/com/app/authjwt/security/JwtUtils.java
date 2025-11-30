@@ -17,10 +17,10 @@ import java.util.function.Function;
 @Service
 public class JwtUtils {
 
-    @Value("${auth.app.jwtSecret}")
+    @Value("${auth.app.jwtSecret:defaultSecretKeyForDevelopment1234567890123456789012}")
     private String jwtSecret;
 
-    @Value("${auth.app.jwtExpirationMs}")
+    @Value("${auth.app.jwtExpirationMs:86400000}")
     private long jwtExpirationMs;
 
     private SecretKey getSignInKey() {
