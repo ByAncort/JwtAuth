@@ -2,11 +2,9 @@ package com.app.authjwt.User.service;
 
 import com.app.authjwt.User.Model.User;
 import com.app.authjwt.User.Repository.UserRepository;
-import com.app.authjwt.config.jwt.JwtUtils;
-import com.app.authjwt.dto.PermissionDto;
 import com.app.authjwt.dto.RoleDto;
 import com.app.authjwt.dto.UserDto;
-import com.app.authjwt.payload.request.RegisterRequest;
+import com.app.authjwt.security.JwtUtils;
 import org.apache.catalina.mapper.Mapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -33,11 +31,6 @@ public class UserService {
                 .roles(user.getRoles().stream()
                         .map(role -> RoleDto.builder()
                                 .name(role.getName())
-                                .permissions(role.getPermissions().stream()
-                                        .map(perm -> PermissionDto.builder()
-                                                .name(perm.getName())
-                                                .build())
-                                        .collect(Collectors.toSet()))
                                 .build())
                         .collect(Collectors.toList()))
                 .enabled(user.isEnabled())
