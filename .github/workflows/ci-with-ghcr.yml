@@ -133,3 +133,30 @@ jobs:
         continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
+
+  # Este job solo se ejecuta si tienes un cluster K8s configurado
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    needs: docker-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      # Configurar acceso al cluster (necesitas configurar esto según tu proveedor)
+      # - name: Configure Kubeconfig
+      #   run: |
+      #     echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+      
+      - name: Deploy to Kubernetes
+        run: |
+          # Validar archivos sin aplicarlos
+          kubectl apply --dry-run=client -f k8s/
+          
+          # Aplicar configuraciones (descomenta cuando tengas el cluster)
+          # kubectl apply -f k8s/
