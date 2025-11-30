@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: jwt-auth
+  namespace: default
   labels:
     app: jwt-auth
 spec:
@@ -20,44 +21,49 @@ spec:
     spec:
       containers:
         - name: jwt-auth
-          image: ghcr.io/your-org/jwt-auth:latest
+          image: ghcr.io/byancort/jwt-auth:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
+              name: http
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
-            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-              value: "health,info,metrics,prometheus"
+            - name: JAVA_OPTS
+              value: "-Xms256m -Xmx512m"
           resources:
             requests:
-              memory: "512Mi"
+              memory: "256Mi"
               cpu: "250m"
             limits:
-              memory: "1Gi"
+              memory: "512Mi"
               cpu: "500m"
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 5
+            initialDelaySeconds: 30
             periodSeconds: 5
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: jwt-auth-service
+  namespace: default
   labels:
     app: jwt-auth
 spec:
+  type: LoadBalancer
   selector:
     app: jwt-auth
   ports:
-    - port: 8080
+    - port: 80
       targetPort: 8080
-  type: ClusterIP
+      protocol: TCP
+      name: http
