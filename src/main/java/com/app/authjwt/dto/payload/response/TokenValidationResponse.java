@@ -1,4 +1,4 @@
-package com.app.authjwt.payload.response;
+package com.app.authjwt.dto.payload.response;
 
 import lombok.Builder;
 import lombok.Data;

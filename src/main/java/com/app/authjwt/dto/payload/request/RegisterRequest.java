@@ -1,4 +1,4 @@
-package com.app.authjwt.payload.request;
+package com.app.authjwt.dto.payload.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
