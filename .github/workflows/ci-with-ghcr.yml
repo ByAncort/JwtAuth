@@ -65,44 +65,46 @@ jobs:
           SPRING_PROFILES_ACTIVE: test
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ByAncort_JwtAuth -Dsonar.organization=byancort -Dsonar.host.url=https://sonarcloud.io
   
-  security-scan:
-    name: Snyk Security Scan
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
-      
-      - name: Install Snyk CLI
-        run: |
-          npm install -g snyk
-      
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/setup@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          # This will automatically run `snyk test` on all manifest files
-          args: --severity-threshold=high
-      
-      - name: Snyk Maven test
-        run: |
-          snyk test --all-projects --severity-threshold=high
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      
-      - name: Snyk Maven monitor (optional - for tracking in Snyk dashboard)
-        run: |
-          snyk monitor --all-projects
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-          
+security-scan:
+  name: Snyk Security Scan
+  needs: build-and-test
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Debug environment
+      run: |
+        echo "Current directory: $(pwd)"
+        ls -la
+        which mvn || echo "Maven not in PATH"
+        mvn --version || echo "Maven not working"
+        if [ -f "./mvnw" ]; then
+          echo "Maven wrapper exists"
+          ls -la ./mvnw
+        else
+          echo "No Maven wrapper found"
+        fi
+    
+    - name: Test Maven dependency tree
+      run: |
+        # Test the exact command Snyk is trying to run
+        mvn dependency:tree -DoutputType=dot --batch-mode --non-recursive --file pom.xml
+      continue-on-error: true
+    
+    - name: Install Snyk CLI and run test
+      run: |
+        npm install -g snyk
+        snyk test --debug --all-projects --severity-threshold=high
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+                  
   docker-build:
     name: Build and Push Docker Image
     needs: [sonarqube-analysis, security-scan]
