@@ -23,3 +23,12 @@ auth:
     jwtSecret: testSecretKeyForTesting
     jwtExpirationMs: 86400000
     jwtRefresh: 2592000000
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include=health:t co
