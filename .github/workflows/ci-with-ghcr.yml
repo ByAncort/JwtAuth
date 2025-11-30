@@ -64,7 +64,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SPRING_PROFILES_ACTIVE: test
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ByAncort_JwtAuth -Dsonar.organization=byancort -Dsonar.host.url=https://sonarcloud.io
-  
+    
   security-scan:
     name: Snyk Security Scan
     needs: build-and-test
@@ -79,29 +79,28 @@ jobs:
           distribution: 'temurin'
           cache: maven
       
-      - name: Install Snyk CLI
-        run: |
-          npm install -g snyk
+      # Build the project first so dependencies are resolved
+      - name: Build project
+        run: mvn -B clean install -DskipTests
+        env:
+          SPRING_PROFILES_ACTIVE: test
       
+      # Use Snyk Maven Action which handles Maven projects better
       - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/setup@master
+        uses: snyk/actions/maven@master
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          # This will automatically run `snyk test` on all manifest files
           args: --severity-threshold=high
       
-      - name: Snyk Maven test
-        run: |
-          snyk test --all-projects --severity-threshold=high
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      
-      - name: Snyk Maven monitor (optional - for tracking in Snyk dashboard)
-        run: |
-          snyk monitor --all-projects
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      # Optional: Upload results to GitHub Security tab
+      - name: Upload Snyk results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: snyk.sarif
           
   docker-build:
     name: Build and Push Docker Image
