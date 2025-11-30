@@ -1,5 +1,4 @@
 name: CI - MicroService Authentication
-
 on:
   push:
     branches: [ "main" ]
@@ -7,45 +6,54 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # 1. BUILD, TEST & QUALITY (Combinados por eficiencia en Java)
-  build-and-analyze:
-    name: Build, Test & SonarQube
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Build and test with Maven
+      run: mvn -B clean verify --file pom.xml
+      env:
+        SPRING_PROFILES_ACTIVE: test
+        
+  sonarqube:
+    name: SonarQube Analysis
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Importante para que SonarQube detecte cambios
-
+          fetch-depth: 0
+      
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
-
-      - name: Cache SonarCloud packages
+      
+      - name: Cache SonarQube packages
         uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-
-      # Este paso compila, corre tests, genera reporte de cobertura y lo envía a Sonar
-      - name: Build and Analyze
+      
+      - name: Build with Maven
+        run: mvn -B clean verify --file pom.xml
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SPRING_PROFILES_ACTIVE: test
+      
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: >
-          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
-          -Dsonar.projectKey=TU_PROJECT_KEY_AQUI
-          -Dsonar.organization=TU_ORGANIZACION_AQUI
-          -Dsonar.host.url=https://sonarcloud.io
-          -Dsonar.qualitygate.wait=true
-
-      # Subimos el JAR generado para usarlo en el siguiente job (Docker)
-      - name: Upload JAR Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-jar
-          path: target/*.jar
-          retention-days: 1
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
