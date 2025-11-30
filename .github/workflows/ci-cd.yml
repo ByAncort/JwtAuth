@@ -134,3 +134,27 @@ jobs:
         continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
+
+  monitoring-setup:
+    name: Setup Monitoring Stack
+    needs: docker-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Kubernetes monitoring
+        run: |
+          # Deploy Prometheus
+          kubectl apply -f monitoring/prometheus-config.yaml
+          
+          # Deploy Grafana
+          kubectl apply -f monitoring/grafana-config.yaml
+          
+          # Deploy Node Exporter
+          kubectl apply -f monitoring/node-exporter.yaml
+          
+      - name: Wait for monitoring stack
+        run: |
+          kubectl wait --for=condition=ready pod -l app=prometheus --timeout=300s
+          kubectl wait --for=condition=ready pod -l app=grafana --timeout=300s
