@@ -102,6 +102,15 @@ jobs:
         with:
           sarif_file: snyk.sarif
           
+      - name: Check for critical vulnerabilities
+        run: |
+          if [ -f "trivy-results.sarif" ]; then
+            echo "Checking for critical vulnerabilities..."
+            # Falla el pipeline si hay vulnerabilidades críticas
+            exit 1
+          fi
+        if: steps.trivy.outputs.exit-code != 0
+ 
   docker-build:
     name: Build and Push Docker Image
     needs: [sonarqube-analysis, security-scan]
