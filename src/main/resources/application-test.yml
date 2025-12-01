@@ -1,4 +1,9 @@
+server:
+  port: 9001  # Puerto aleatorio para tests
+
 spring:
+  application:
+    name: jwt-auth-service-test
   datasource:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
@@ -16,19 +21,41 @@ spring:
   h2:
     console:
       enabled: false
+  main:
+    allow-circular-references: true
 
+# JWT Configuration para Testing
 auth:
   app:
     jwtCookieName: auth
-    jwtSecret: testSecretKeyForTesting
+    jwtSecret: testSecretKeyForTestingPurposesOnly123456789
     jwtExpirationMs: 86400000
     jwtRefresh: 2592000000
 
+# Actuator para tests
 management:
-  endpoint:
-    health:
-      show-details: always
   endpoints:
     web:
       exposure:
-        include=health:t co
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: jwt-auth-service
+      environment: test
+
+# Logging para tests (menos verbose)
+logging:
+  level:
+    root: WARN
+    com.app: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
