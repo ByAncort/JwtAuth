@@ -150,6 +150,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
+          # Convertir a minúsculas para GHCR
           images: ghcr.io/${{ github.repository_owner }}/jwt-auth
           tags: |
             type=sha,prefix=main-
@@ -166,12 +167,42 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
+      # NUEVO: Normalizar nombre de la imagen
+      - name: Set image name for scanning
+        id: image-name
+        run: |
+          IMAGE_NAME=$(echo "ghcr.io/${{ github.repository_owner }}/jwt-auth:latest" | tr '[:upper:]' '[:lower:]')
+          echo "image=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Imagen a escanear: $IMAGE_NAME"
+      
+      # NUEVO: Esperar a que la imagen esté disponible
+      - name: Wait for image to be available
+        run: |
+          echo "⏳ Esperando a que la imagen esté disponible en GHCR..."
+          sleep 30
+          
+          # Intentar hacer pull de la imagen
+          for i in {1..5}; do
+            echo "Intento $i/5: Verificando imagen..."
+            if docker pull ${{ steps.image-name.outputs.image }}; then
+              echo "✅ Imagen disponible"
+              break
+            fi
+            
+            if [ $i -eq 5 ]; then
+              echo "⚠️  No se pudo verificar la imagen, continuando de todos modos..."
+            fi
+            
+            echo "Esperando 10 segundos más..."
+            sleep 10
+          done
+      
       - name: Run Trivy security scan
         uses: aquasecurity/trivy-action@master
         id: trivy
         continue-on-error: true
         with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/jwt-auth:latest
+          image-ref: ${{ steps.image-name.outputs.image }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -190,7 +221,7 @@ jobs:
         id: trivy-json
         continue-on-error: true
         with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/jwt-auth:latest
+          image-ref: ${{ steps.image-name.outputs.image }}
           format: 'json'
           output: 'trivy-results.json'
           severity: 'CRITICAL,HIGH'
