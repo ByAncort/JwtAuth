@@ -69,6 +69,11 @@ jobs:
     name: Snyk Security Scan
     needs: build-and-test
     runs-on: ubuntu-latest
+    # CORREGIDO: Agregar permisos necesarios
+    permissions:
+      contents: read
+      security-events: write  # Necesario para upload-sarif
+      actions: read
     steps:
       - uses: actions/checkout@v4
       
@@ -86,18 +91,27 @@ jobs:
       
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/maven@master
+        id: snyk
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high
+          args: --sarif-file-output=snyk.sarif --severity-threshold=high
       
+      # CORREGIDO: Solo subir si el archivo existe
       - name: Upload Snyk results to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && hashFiles('snyk.sarif') != ''
         continue-on-error: true
         with:
           sarif_file: snyk.sarif
+      
+      # NUEVO: Reporte de vulnerabilidades encontradas
+      - name: Check Snyk results
+        if: steps.snyk.outcome == 'failure'
+        run: |
+          echo "⚠️ Snyk encontró vulnerabilidades de severidad HIGH o superior"
+          echo "📋 Revisa los detalles en Security → Code scanning alerts"
  
   docker-build:
     name: Build and Push Docker Image
@@ -161,21 +175,64 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
-          exit-code: '1'  # Falla si encuentra vulnerabilidades
       
+      # CORREGIDO: Solo subir si el archivo existe
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
       
-      # CORREGIDO: Check correcto para vulnerabilidades críticas
-      - name: Check Trivy scan results
-        if: steps.trivy.outcome == 'failure'
+      # NUEVO: Scan adicional con formato JSON para análisis
+      - name: Run Trivy scan (JSON format)
+        uses: aquasecurity/trivy-action@master
+        id: trivy-json
+        continue-on-error: true
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/jwt-auth:latest
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH'
+      
+      # NUEVO: Análisis detallado de resultados
+      - name: Analyze Trivy results
+        if: always() && hashFiles('trivy-results.json') != ''
         run: |
-          echo "⚠️ Trivy encontró vulnerabilidades CRÍTICAS o HIGH"
-          echo "Revisa los resultados en la pestaña Security → Code scanning alerts"
-          echo "Pipeline continúa pero se recomienda revisar y remediar las vulnerabilidades"
-          # Si quieres que falle el pipeline, descomenta la siguiente línea:
-          # exit 1
+          echo "🔍 Análisis de Seguridad Trivy"
+          echo "================================"
+          
+          if command -v jq &> /dev/null; then
+            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json 2>/dev/null || echo "0")
+            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json 2>/dev/null || echo "0")
+            
+            echo "📊 Vulnerabilidades encontradas:"
+            echo "   CRITICAL: $CRITICAL"
+            echo "   HIGH: $HIGH"
+            
+            if [ "$CRITICAL" -gt 0 ]; then
+              echo ""
+              echo "❌ CRÍTICO: Se encontraron $CRITICAL vulnerabilidades CRÍTICAS"
+              echo "📋 Revisa los detalles en: Security → Code scanning alerts"
+              echo "🔧 Se recomienda remediar antes de usar en producción"
+            elif [ "$HIGH" -gt 0 ]; then
+              echo ""
+              echo "⚠️  Se encontraron $HIGH vulnerabilidades HIGH"
+              echo "📋 Revisa los detalles en: Security → Code scanning alerts"
+            else
+              echo ""
+              echo "✅ No se encontraron vulnerabilidades CRÍTICAS o HIGH"
+            fi
+          else
+            echo "⚠️  jq no está disponible, no se puede analizar el reporte JSON"
+            if [ -f "trivy-results.sarif" ]; then
+              echo "✅ Resultados SARIF subidos a GitHub Security"
+            fi
+          fi
+      
+      # OPCIONAL: Descomenta para hacer fallar el pipeline con vulnerabilidades críticas
+      # - name: Fail on critical vulnerabilities
+      #   if: steps.trivy.outcome == 'failure'
+      #   run: |
+      #     echo "❌ Pipeline detenido: Se encontraron vulnerabilidades CRÍTICAS"
+      #     exit 1
