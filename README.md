@@ -416,13 +416,6 @@ El pipeline CI/CD se ejecutará automáticamente validando los cambios.
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ByAncort_JwtAuth&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ByAncort_JwtAuth)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=ByAncort_JwtAuth&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=ByAncort_JwtAuth)
 
-## Licencia
-
-[Agregar información de licencia]
-
-## Contacto
-
-[Agregar información de contacto]
 
 ---
 
@@ -437,3 +430,4 @@ El pipeline CI/CD se ejecutará automáticamente validando los cambios.
 - Las métricas son compatibles con Prometheus para monitoreo
 - Grafana viene con datasource pre-configurado apuntando a Prometheus
 - Los datos de Prometheus y Grafana persisten en volúmenes Docker
+
