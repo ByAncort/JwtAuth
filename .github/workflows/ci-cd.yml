@@ -64,10 +64,48 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SPRING_PROFILES_ACTIVE: test
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=ByAncort_JwtAuth -Dsonar.organization=byancort -Dsonar.host.url=https://sonarcloud.io
-
+    
+  security-scan:
+    name: Snyk Security Scan
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+      
+      # Build the project first so dependencies are resolved
+      - name: Build project
+        run: mvn -B clean install -DskipTests
+        env:
+          SPRING_PROFILES_ACTIVE: test
+      
+      # Use Snyk Maven Action which handles Maven projects better
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/maven@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+      
+      # Optional: Upload results to GitHub Security tab
+      - name: Upload Snyk results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: snyk.sarif
+          
   docker-build:
     name: Build and Push Docker Image
-    needs: sonarqube-analysis
+    needs: [sonarqube-analysis, security-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -103,16 +141,14 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/jwt-auth
           tags: |
-            type=sha,prefix={{branch}}-
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=main-
+            type=raw,value=latest
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
