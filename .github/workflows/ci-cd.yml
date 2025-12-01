@@ -79,13 +79,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
       
-      # Build the project first so dependencies are resolved
       - name: Build project
         run: mvn -B clean install -DskipTests
         env:
           SPRING_PROFILES_ACTIVE: test
       
-      # Use Snyk Maven Action which handles Maven projects better
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/maven@master
         continue-on-error: true
@@ -94,22 +92,12 @@ jobs:
         with:
           args: --severity-threshold=high
       
-      # Optional: Upload results to GitHub Security tab
       - name: Upload Snyk results to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         continue-on-error: true
         with:
           sarif_file: snyk.sarif
-          
-      - name: Check for critical vulnerabilities
-        run: |
-          if [ -f "trivy-results.sarif" ]; then
-            echo "Checking for critical vulnerabilities..."
-            # Falla el pipeline si hay vulnerabilidades críticas
-            exit 1
-          fi
-        if: steps.trivy.outputs.exit-code != 0
  
   docker-build:
     name: Build and Push Docker Image
@@ -155,6 +143,7 @@ jobs:
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
+        id: docker-build
         with:
           context: .
           push: true
@@ -165,17 +154,28 @@ jobs:
       
       - name: Run Trivy security scan
         uses: aquasecurity/trivy-action@master
-        if: github.event_name != 'pull_request'
+        id: trivy
         continue-on-error: true
         with:
           image-ref: ghcr.io/${{ github.repository_owner }}/jwt-auth:latest
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          exit-code: '1'  # Falla si encuentra vulnerabilidades
       
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        if: github.event_name != 'pull_request' && always()
+        if: always()
         continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
+      
+      # CORREGIDO: Check correcto para vulnerabilidades críticas
+      - name: Check Trivy scan results
+        if: steps.trivy.outcome == 'failure'
+        run: |
+          echo "⚠️ Trivy encontró vulnerabilidades CRÍTICAS o HIGH"
+          echo "Revisa los resultados en la pestaña Security → Code scanning alerts"
+          echo "Pipeline continúa pero se recomienda revisar y remediar las vulnerabilidades"
+          # Si quieres que falle el pipeline, descomenta la siguiente línea:
+          # exit 1
